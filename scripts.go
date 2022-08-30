@@ -2,54 +2,50 @@ package main
 
 import (
 	"bytes"
-	"fmt"
-	"io/ioutil"
-	"os"
-	"text/template"
-
 	"github.com/PuerkitoBio/goquery"
-	"github.com/gomarkdown/markdown"
-	"github.com/gomarkdown/markdown/parser"
-	"github.com/russross/blackfriday"
+	"github.com/avelino/awesome-go/pkg/markdown"
+	"html/template"
+	"io"
+	"os"
 )
 
-func readme() []byte {
-	input, err := ioutil.ReadFile("./README.md")
+const (
+	indexTemplateFile = "tmpl/tmpl.html"
+	readmeFile        = "./README.md"
+)
+
+type content struct {
+	Body template.HTML
+}
+
+// GenerateHTML generate site html from markdown file
+func GenerateHTML() ([]byte, error) {
+	readmeContent := readmeHTML()
+
+	t := template.Must(template.ParseFiles(indexTemplateFile))
+	buf := new(bytes.Buffer)
+	err := t.Execute(buf, &content{Body: template.HTML(readmeContent)})
+	if err != nil {
+		return nil, err
+	}
+	return io.ReadAll(buf)
+}
+
+func readmeHTML() []byte {
+	readmeContent, err := os.ReadFile(readmeFile)
 	if err != nil {
 		panic(err)
 	}
-	html := fmt.Sprintf("<body>%s</body>", blackfriday.MarkdownCommon(input))
-	htmlByteArray := []byte(html)
-	return htmlByteArray
+
+	html, _ := markdown.ConvertMarkdownFileToHTML(readmeContent)
+	return html
 }
 
 func startQuery() *goquery.Document {
-	buf := bytes.NewBuffer(readme())
+	buf := bytes.NewReader(readmeHTML())
 	query, err := goquery.NewDocumentFromReader(buf)
 	if err != nil {
 		panic(err)
 	}
 	return query
-}
-
-type content struct {
-	Body string
-}
-
-// GenerateHTML generate site html (index.html) from markdown file
-func GenerateHTML() (err error) {
-	// options
-	readmePath := "./README.md"
-	tplPath := "tmpl/tmpl.html"
-	idxPath := "tmpl/index.html"
-	input, _ := ioutil.ReadFile(readmePath)
-	extensions := parser.CommonExtensions | parser.AutoHeadingIDs | parser.LaxHTMLBlocks
-	parser := parser.NewWithExtensions(extensions)
-
-	body := string(markdown.ToHTML(input, parser, nil))
-	c := &content{Body: body}
-	t := template.Must(template.ParseFiles(tplPath))
-	f, err := os.Create(idxPath)
-	t.Execute(f, c)
-	return
 }

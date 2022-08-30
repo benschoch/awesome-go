@@ -70,9 +70,12 @@ func TestSeparator(t *testing.T) {
 	}
 }
 func TestGenerateHTML(t *testing.T) {
-	err := GenerateHTML()
+	html, err := GenerateHTML()
 	if err != nil {
 		t.Errorf("html generate error '%s'", err.Error())
+	}
+	if html == nil {
+		t.Error("empty html generated")
 	}
 }
 
